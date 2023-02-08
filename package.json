@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "chess-tools": "^0.3.0",
+    "chess.js": "^1.0.0-beta.2",
+    "chessy": "^1.0.8",
+    "node-uci": "^1.3.4"
+  }
+}

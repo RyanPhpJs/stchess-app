@@ -1,0 +1,11 @@
+node_modules/
+engine/src/*.h
+engine/src/*.cpp
+engine/src/*.o
+engine/src/*/*.h
+engine/src/*/*.cpp
+engine/src/*/*.o
+engine/src/*/*/*.h
+engine/src/*/*/*.cpp
+engine/src/*/*/*.o
+engine/src/Makefile

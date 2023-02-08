@@ -1,0 +1,18 @@
+[Event "Casual Rapid game"]
+[Site "https://lichess.org/shdPhqi3"]
+[Date "2023.02.05"]
+[White "Alisound"]
+[Black "RyanPhpJs"]
+[Result "0-1"]
+[UTCDate "2023.02.05"]
+[UTCTime "20:45:51"]
+[WhiteElo "1500"]
+[BlackElo "1294"]
+[Variant "Standard"]
+[TimeControl "600+0"]
+[ECO "C64"]
+[Opening "Ruy Lopez: Classical Variation"]
+[Termination "Normal"]
+[Annotator "lichess.org"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Bc5 { C64 Ruy Lopez: Classical Variation } 4. O-O d6 5. Bxc6+ bxc6 6. d4 exd4 7. Nxd4 Bb7 8. Nc3 Qf6 9. Be3 Ne7 10. Na4 Bxd4 11. Bxd4 Qg6 12. Re1 c5 13. Bc3 Bxe4 14. f3 Bxc2 15. Qd5 O-O 16. Rxe7 Bxa4 17. Rae1 c6 18. Qd4 cxd4 19. Bxd4 c5 20. b3 Bc6 21. Rc7 cxd4 22. Rxc6 Rac8 23. Ra6 d3 24. Rd1 Rfe8 25. Rxa7 Re2 26. Kf1 Qxg2# { Black wins by checkmate. } 0-1
