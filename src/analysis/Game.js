@@ -5,6 +5,8 @@ const { Engine } = require("node-uci");
 const MoveAnalysis = require("./MoveAnalysis");
 const Piece = require("./Piece");
 const { getInfo } = require("chessy");
+const TaticalTheme = require("../tatical/TaticalTheme");
+const Position = require("../tatical/Position");
 
 /**
  * 
@@ -58,6 +60,7 @@ module.exports = class Game extends EventEmitter {
      * @private
      */
     getStockStartCount(history){
+        if(this.client.instances <= 0) return 1;
         if(history.length <= 10) return 1
         if(history.length <= 20) return Math.min(this.client.instances, 2);
         if(history.length <= 30) return Math.min(this.client.instances, 3);
@@ -104,7 +107,7 @@ module.exports = class Game extends EventEmitter {
         score.sort((a, b) => {
             
             if(!a.score)
-            this.console.log(score);
+            //this.console.log(score);
             if(a.score.unit != "cp" && b.score.unit != "cp"){
                 if(a.score.value >= 0 && b.score.value >= 0) return ( a.score.value - b.score.value ) * -1
                 if(a.score.value >= 0) return 1;
@@ -173,6 +176,7 @@ module.exports = class Game extends EventEmitter {
 
         const MovePositions = {}
         const board = game.board();
+        const _MoveResult = [];
         for(const lines of board){
             for(const piece of lines){
                 if(piece){
@@ -204,7 +208,8 @@ module.exports = class Game extends EventEmitter {
                         .setDescription(book.description || (MovePositions[move.from] === 1 ? (move.piece == "p" ? `Esse lance avança o peão para ele participar da partida` : `Esse lance desenvolve uma peça`) : `Executa o lance do(a) ${book.name}`))
                         .setType("BOOK")
                     ResponseMoves.push(_m);
-                    EngineMoves.push(move.lan)
+                    EngineMoves.push(move.lan);
+                    _MoveResult.push(null);
                     this.progress();
                 }else{
                     game.undo();
@@ -425,6 +430,8 @@ module.exports = class Game extends EventEmitter {
                         _m.setDescription(`Esse lance permite um xeque-mate forçado em ${nextScore.value > 0 ? nextScore.value : nextScore.value * -1} lances`)
                             .setType("MISTAKE")
                     }
+
+                    _m.__isMate = true;
                         
                     ResponseMoves.push(_m);
                     continue;
@@ -472,7 +479,7 @@ module.exports = class Game extends EventEmitter {
                 let OPTION_CP = {
                     EXCELENT: 50,
                     BOM: 100,
-                    IMPRECISAO: 150,
+                    IMPRUDENTE: 150,
                     MISTAKE: 200,
                     CAPIVARADA: 250
                 }
@@ -481,7 +488,7 @@ module.exports = class Game extends EventEmitter {
                     OPTION_CP = {
                         EXCELENT: 50,
                         BOM: 100,
-                        IMPRECISAO: 150,
+                        IMPRUDENTE: 150,
                         MISTAKE: 200,
                         CAPIVARADA: 250
                     }
@@ -489,7 +496,7 @@ module.exports = class Game extends EventEmitter {
                     OPTION_CP = {
                         EXCELENT: 100,
                         BOM: 150,
-                        IMPRECISAO: 200,
+                        IMPRUDENTE: 200,
                         MISTAKE: 275,
                         CAPIVARADA: 450
                     }
@@ -497,7 +504,7 @@ module.exports = class Game extends EventEmitter {
                     OPTION_CP = {
                         EXCELENT: 150,
                         BOM: 250,
-                        IMPRECISAO: 325,
+                        IMPRUDENTE: 325,
                         MISTAKE: 400,
                         CAPIVARADA: 600
                     }
@@ -505,7 +512,7 @@ module.exports = class Game extends EventEmitter {
                     OPTION_CP = {
                         EXCELENT: 200,
                         BOM: 300,
-                        IMPRECISAO: 375,
+                        IMPRUDENTE: 375,
                         MISTAKE: 450,
                         CAPIVARADA: 600
                     }
@@ -544,9 +551,9 @@ module.exports = class Game extends EventEmitter {
 
                 }
 
-                if(MoveRes.score.value - OPTION_CP.IMPRECISAO < nextScore.value){
+                if(MoveRes.score.value - OPTION_CP.IMPRUDENTE < nextScore.value){
 
-                    const _m = new Move(MoveRes.move).setType("IMPRECISAO");
+                    const _m = new Move(MoveRes.move).setType("IMPRUDENTE");
                     let _game = new Chess();
                     _game.load(previousFen);
                     let _move = _game.move(MoveRes.bestmove);
@@ -600,6 +607,8 @@ module.exports = class Game extends EventEmitter {
                         _m.setDescription(`Esse lance permite um xeque-mate forçado em ${nextScore.value > 0 ? nextScore.value : nextScore.value * -1} lances`)
                             .setType("MISTAKE")
                     }
+
+                    _m.__isMate = true;
                         
                     ResponseMoves.push(_m);
                     continue;
@@ -635,7 +644,7 @@ module.exports = class Game extends EventEmitter {
                     }
                 }else if(MoveRes.score.value >= 0 && nextScore.value < 0){
                     const _m = new Move(MoveRes.move)
-                        .setType("CAPIVARADA")
+                        .setType("VITORIA_PERDIDA")
                         .setDescription(`Esse lance perde uma sequencia de mate`)
                     ResponseMoves.push(_m);
                     continue;
@@ -660,6 +669,8 @@ module.exports = class Game extends EventEmitter {
             ResponseMoves[ResponseMoves.length-1].score = MoveResult[MoveResult.length-1].score;
             ResponseMoves[ResponseMoves.length-1].next = nextMoveAnalysis || {}
         }
+
+        _MoveResult.push(...MoveResult)
 
         
 
@@ -724,6 +735,8 @@ module.exports = class Game extends EventEmitter {
                 const nextPos = Info2[ResponseMoves[index].move.to];
 
                 if(nextPos.threats){
+
+                    this.console.log(["THREATS", ResponseMoves[index].move.san, nextPos.threats])
                     
                     let piecePointsAttacking = [];
                     const piecePointsDeffeding = []
@@ -802,16 +815,36 @@ module.exports = class Game extends EventEmitter {
                         return nc(attackingPieces, defendingPieces)
 
                     }
+                    // this.console.log([
+                    //     "COMPARE", 
+                    //     [
+                    //         getPiecePoints(ResponseMoves[index].move.piece), 
+                    //         getPiecePoints(ResponseMoves[index].move.captured)?.points || -1, 
+                    //         ..._piecePointsDeffeding
+                    //     ], 
+                    //     _piecePointsAttacking, 
+                    //     compare(
+                    //         _piecePointsAttacking, 
+                    //         [
+                    //             getPiecePoints(ResponseMoves[index].move.piece), 
+                    //             ..._piecePointsDeffeding
+                    //         ], 
+                    //         getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
+                    //         )
+                    //     ]
+                    // )
                     if(compare(_piecePointsAttacking, [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], getPiecePoints(ResponseMoves[index].move.captured)?.points || -1)){
                         // é um sacrificio, mas essa peça já estava perdida antes?
                         const _ngame = new Chess(ResponseMoves[index].move.fen);
                         const ListMoves = _ngame.moves();
                         let outerMoves = false;
+                        this.console.log(["LIST", ListMoves.length]);
                         if(ListMoves.length > 0){
                             for(const _move of ListMoves){
+                                this.console.log(_move);
                                 const __mv = _ngame.move(_move);
                                 if(__mv.from === ResponseMoves[index].move.from){
-                                    const infoPos = getInfo(_ngame.fen(), [__mv.from])[__mv.from];
+                                    const infoPos = getInfo(_ngame.fen(), [__mv.to])[__mv.to];
                                     if(infoPos.threats){
                                         const piecePointsAttacking = [];
                                         const piecePointsDeffeding = []
@@ -840,13 +873,13 @@ module.exports = class Game extends EventEmitter {
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
 
-                                        if(compare(_piecePointsAttacking, [getPiecePoints(__mv.piece), ..._piecePointsDeffeding], getPiecePoints(__mv.captured)?.points || -1)){
+                                        if(!compare(_piecePointsAttacking, [getPiecePoints(__mv.piece), ..._piecePointsDeffeding], getPiecePoints(__mv.captured)?.points || -1)){
                                             outerMoves = true;
                                             break
                                         }
                                     }
                                 }else{
-                                    const infoPos = getInfo(_ngame.fen(), [ResponseMoves[index].move.to])[ResponseMoves[index].move.to];
+                                    const infoPos = getInfo(_ngame.fen(), [ResponseMoves[index].move.from])[ResponseMoves[index].move.from];
                                     if(infoPos.threats){
                                         const piecePointsAttacking = [];
                                         const piecePointsDeffeding = []
@@ -875,7 +908,7 @@ module.exports = class Game extends EventEmitter {
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
 
-                                        if(compare(_piecePointsAttacking, [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], getPiecePoints(ResponseMoves[index].move.captured)?.points || -1)){
+                                        if(!compare(_piecePointsAttacking, [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], getPiecePoints(ResponseMoves[index].move.captured)?.points || -1)){
                                             outerMoves = true;
                                             break
                                         }
@@ -883,6 +916,7 @@ module.exports = class Game extends EventEmitter {
                                 }
                                 _ngame.undo();
                             }
+                            this.console.log(["ANALYSIS", outerMoves])
                             if(outerMoves){
                                 ResponseMoves[index].setType("BRILHANTE")
                                     .setDescription("Esse lance sacrifica a sua peça, é uma jogada dificil de ser vista")
@@ -893,6 +927,52 @@ module.exports = class Game extends EventEmitter {
                 }
                 
             }
+
+            let s__ = true;
+
+            if(ResponseMoves[index-1]){
+                if(ResponseMoves[index-1].type == "MISTAKE" || ResponseMoves[index-1].type == "CAPIVARADA"){
+                    if(ResponseMoves[index].type == "BEST" || ResponseMoves[index].type == "EXCELENT" || ResponseMoves[index].type == "CRITICAL"){
+                        ResponseMoves[index].setDescription("Esse lance se aproveita de um erro adversario" + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                        s__ = false;
+                    }
+                }
+            }
+
+            if(s__ && typeof _MoveResult[index+1] !== "undefined"){
+                if(ResponseMoves[index].type == "BEST" || ResponseMoves[index].type == "EXCELENT" || ResponseMoves[index].type == "CRITICAL" || ResponseMoves[index].type == "BOM" || ResponseMoves[index].type == "BOOK"){
+                    const position = new Position(ResponseMoves[index].move.fen);
+                    const text = position.detect(`${ResponseMoves[index]?.move.san}${_MoveResult[index+1]?.result?.[0]?.pv ? " " + _MoveResult[index+1]?.result?.[0]?.pv : ""}`, ResponseMoves[index].type, _MoveResult[index]?.result?.[0]?.pv);
+                    if(text){
+                        if(text === "Esse lance move sua peça para uma posição mais ativa"){
+                            if(ResponseMoves[index].move.captured){
+                                ResponseMoves[index].setDescription("Esse lance captura uma peça" + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                            }else if(Math.floor(Math.random() * 10) > 5 ){
+                                ResponseMoves[index].setDescription(text + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                            }
+                        }else{
+                            ResponseMoves[index].setDescription(text + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                        }
+                    }else if(ResponseMoves[index].move.captured){
+                        ResponseMoves[index].setDescription("Esse lance captura uma peça" + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                    }
+                }else if(ResponseMoves[index].type !== "MISTAKE" && ResponseMoves[index].type !== "CAPIVARADA" && ResponseMoves[index].type !== "VITORIA_PERDIDA" && ResponseMoves[index].type !== "BRILHANTE"){
+                    const position = new Position(ResponseMoves[index].move.fen);
+                    const text = position.detect(`${ResponseMoves[index]?.move.san}${_MoveResult[index+1]?.result?.[0]?.pv ? " " + _MoveResult[index+1]?.result?.[0]?.pv : ""}`, ResponseMoves[index].type, _MoveResult[index]?.result?.[0]?.pv);
+                    if(text){
+                        if(text === "Esse lance move sua peça para uma posição mais ativa"){
+                            if(ResponseMoves[index].move.captured){
+                                ResponseMoves[index].setDescription("Esse lance captura uma peça" + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                            }else if(Math.floor(Math.random() * 10) > 5 ){
+                                ResponseMoves[index].setDescription(text + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                            }
+                        }else{
+                            ResponseMoves[index].setDescription(text + (ResponseMoves[index].type == "CRITICAL" ? ", É o unico lance bom" : ""));
+                        }
+                    }
+                }
+            }
+
             if(ResponseMoves[index].type == "MISTAKE" || ResponseMoves[index].type == "CAPIVARADA"){
                 const _game = new Chess();
                 _game.load(ResponseMoves[index].move.fen);
@@ -925,7 +1005,32 @@ module.exports = class Game extends EventEmitter {
                     //this.console.log(ResponseMoves[index].move.san, boardPieces, boardPieces2, gTurn, oTurn)
                     if(boardPieces[gTurn]-boardPieces[oTurn] > boardPieces2[gTurn]-boardPieces2[oTurn]){
                         ResponseMoves[index].setDescription("Esse lance leva a perda de material");
+                    }else{
+                        const tatical = new Position(ResponseMoves[index].move.fen);
+                        const evaluation = ResponseMoves[index].type;
+                        const type = ResponseMoves[index].type;
+                        ResponseMoves[index]
+                            .setType("TATICAL_ERROR")
+                            .setDescription(tatical.detect(`${ResponseMoves[index].move.san} ${result[0].pv || ""}`.trim(), evaluation, result[0].pv) || "Esse lance permite um tema tatico para o oponente");
                     }
+                }
+            }
+
+            if(ResponseMoves[index-1] && (ResponseMoves[index-1].type == "TATICAL_ERROR" || ResponseMoves[index-1].type == "CAPIVARADA" || ResponseMoves[index-1].type == "MISTAKE")){
+                if(ResponseMoves[index] && (ResponseMoves[index].type == "TATICAL_ERROR" || ResponseMoves[index].type == "CAPIVARADA" || ResponseMoves[index].type == "MISTAKE")){
+                    if(_MoveResult[index-1] && _MoveResult[index-2]){
+                        if(_MoveResult[index-1].score.unit == "cp" && _MoveResult[index-2].score.unit == "cp"){
+                            if(_MoveResult[index-1].score.value < _MoveResult[index-2].score.value - 200){
+                                ResponseMoves[index]
+                                    .setType("VITORIA_PERDIDA")
+                                    .setDescription("Esse lance perde uma forma de se aproveitar de um erro do oponente");
+                                    continue;
+                            }
+                        }
+                    }
+                    ResponseMoves[index]
+                        .setType("TATICAL_ERROR")
+                        .setDescription("Esse lance perde uma forma de se aproveitar de um erro do oponente");
                 }
             }
         }
@@ -954,6 +1059,8 @@ module.exports = class Game extends EventEmitter {
                 k: { total: 0, sum: 0 },
             }
         }
+
+        require("fs").writeFileSync("_move.json", JSON.stringify(_MoveResult, null, 4));
 
         for(const result of ResponseMoves){
             if(result.move.color == "w"){

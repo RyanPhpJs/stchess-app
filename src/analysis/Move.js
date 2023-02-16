@@ -12,17 +12,23 @@ module.exports = class Move {
 
     }
 
+    static getPoints(type){
+        if(type == "BOOK") return 100;
+        if(type == "BEST") return 100;
+        if(type == "BRILHANTE") return 100;
+        if(type == "CRITICAL") return 100;
+        if(type == "EXCELENT") return 90;
+        if(type == "BOM") return 75;
+        if(type == "IMPRUDENTE") return 50;
+        if(type == "MISTAKE") return 30;
+        if(type == "TATICAL_ERROR") return 15;
+        if(type == "CAPIVARADA") return 0;
+        if(type == "VITORIA_PERDIDA") return 0;
+        if(type == "FORCADO") return 100;
+    }
+
     getPoints(){
-        if(this.type == "BEST") return 100;
-        if(this.type == "BRILHANTE") return 100;
-        if(this.type == "CRITICAL") return 100;
-        if(this.type == "EXCELENT") return 90;
-        if(this.type == "BOM") return 75;
-        if(this.type == "IMPRECISAO") return 50;
-        if(this.type == "MISTAKE") return 25;
-        if(this.type == "CAPIVARADA") return 0;
-        if(this.type == "VITORIA_PERDIDA") return 0;
-        if(this.type == "FORCADO") return 100;
+        return Move.getPoints(this.type)
     }
 
     setDescription(description){
