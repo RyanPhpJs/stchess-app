@@ -53,7 +53,7 @@ module.exports = class Position {
                         if(typeof result === "undefined") console.log(result, theme);
                         if(result.status){
                             if(!theme.descriptionError){
-                                console.log(">> "+theme.name);
+                                console.log(`${theme.name} not exists text descriptionError`);
                                 return null;
                             }
                             return theme.descriptionError.replace(/\$([a-zA-Z0-9\.\-\_]+)/, (match, p1) => {

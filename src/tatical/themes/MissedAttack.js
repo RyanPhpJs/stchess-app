@@ -16,6 +16,7 @@ module.exports = class MissedAttack extends TaticalTheme {
         super("MissedAttack", {
             types: ["BOM", "IMPRUDENTE"],
             onlyBestPv: true,
+            descriptionError: "Esse movimento perde uma forma de atacar uma peça de valor maior",
             descriptionFavorite: "Esse movimento perde uma forma de atacar uma peça de valor maior"
         });
 

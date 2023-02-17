@@ -9,3 +9,5 @@ engine/src/*/*/*.h
 engine/src/*/*/*.cpp
 engine/src/*/*/*.o
 engine/src/Makefile
+game_play.pgn
+generate.pgn

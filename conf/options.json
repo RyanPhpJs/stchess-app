@@ -1,4 +1,6 @@
 {
     "depth": 13,
-    "instance_stockfish": 5
+    "instance_stockfish": 1,
+    "port": 8666,
+    "appToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dHJvcXVlIG8gdG9rZW4gbWVub3I.kdL0-LvH57OjN6VMK5exQxUpQwBRSd-7_frddCBqYQ0"
 }

@@ -1,7 +1,8 @@
 const Analysis = require("./src/analysis");
 const pgn = require("fs").readFileSync("game_play.pgn", "utf8");
+const Config = require("./conf/options.json");
 
-const manager = new Analysis();
+const manager = new Analysis("engine/src/stockfish", Config);
 
 const game = manager.create();
 game.setPgn(pgn);

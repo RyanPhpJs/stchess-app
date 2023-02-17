@@ -66,8 +66,8 @@ module.exports = class PawnDouble extends TaticalTheme {
                 i++;
             }
             const doubled = this.has(board, turn);
-            if(doubled.length > 0)
-                console.log(doubled, turn, pv)
+            // if(doubled.length > 0)
+            //     console.log(doubled, turn, pv)
             if(doubled.length > Doubleds.length){
                 const collumns = [];
                 for(const collumn of doubled){

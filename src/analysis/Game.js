@@ -69,7 +69,7 @@ module.exports = class Game extends EventEmitter {
     }
 
     async initStockfish(){
-        const engine = new Engine("engine/src/stockfish");
+        const engine = new Engine(this.client.engine_path);
         await engine.init();
         await engine.setoption('MultiPV', '3')
         await engine.isready()
@@ -665,7 +665,7 @@ module.exports = class Game extends EventEmitter {
 
         }
 
-        if(ResponseMoves[ResponseMoves.length-1]){
+        if(ResponseMoves[ResponseMoves.length-1] && MoveResult[MoveResult.length-1]?.score){
             ResponseMoves[ResponseMoves.length-1].score = MoveResult[MoveResult.length-1].score;
             ResponseMoves[ResponseMoves.length-1].next = nextMoveAnalysis || {}
         }
@@ -735,8 +735,6 @@ module.exports = class Game extends EventEmitter {
                 const nextPos = Info2[ResponseMoves[index].move.to];
 
                 if(nextPos.threats){
-
-                    this.console.log(["THREATS", ResponseMoves[index].move.san, nextPos.threats])
                     
                     let piecePointsAttacking = [];
                     const piecePointsDeffeding = []
@@ -749,7 +747,7 @@ module.exports = class Game extends EventEmitter {
                         if(e.type == "n") e.points = 3;
                         if(e.type == "r") e.points = 5;
                         if(e.type == "q") e.points = 9;
-                        if(e.type == "k") e.points = Infinity;
+                        if(e.type == "k") e.points = 0;
                         return e;
                     }).sort((a, b) => a.points - b.points)
                     for(const position of (nextPos.defenses || [])){
@@ -761,7 +759,7 @@ module.exports = class Game extends EventEmitter {
                         if(e.type == "n") e.points = 3;
                         if(e.type == "r") e.points = 5;
                         if(e.type == "q") e.points = 9;
-                        if(e.type == "k") e.points = Infinity;
+                        if(e.type == "k") e.points = 0;
                         return e;
                     })
                     _piecePointsDeffeding.sort((a, b) => a.points - b.points);
@@ -777,12 +775,20 @@ module.exports = class Game extends EventEmitter {
                         if(e == "n") return { points: 3 };
                         if(e == "r") return { points: 5 };
                         if(e == "q") return { points: 9 };
-                        if(e == "k") return { points: Infinity };
+                        if(e == "k") return { points: 0 };
                     }
                     
 
 
                     function compare(attackingPieces, defendingPieces, capturing=-1){
+
+                        //console.log(["D", attackingPieces, defendingPieces]);
+
+                        attackingPieces.sort((a, b) => {
+                            if(a.points === 0) return 1;
+                            if(b.points === 0) return 0;
+                            return a.points - b.points;
+                        })
 
 
                         if(capturing >= defendingPieces[0]?.points) return false;
@@ -832,16 +838,16 @@ module.exports = class Game extends EventEmitter {
                     //         getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
                     //         )
                     //     ]
-                    // )
+                    // );
                     if(compare(_piecePointsAttacking, [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], getPiecePoints(ResponseMoves[index].move.captured)?.points || -1)){
                         // é um sacrificio, mas essa peça já estava perdida antes?
                         const _ngame = new Chess(ResponseMoves[index].move.fen);
                         const ListMoves = _ngame.moves();
                         let outerMoves = false;
-                        this.console.log(["LIST", ListMoves.length]);
+                        //this.console.log(["LIST", ListMoves.length]);
                         if(ListMoves.length > 0){
                             for(const _move of ListMoves){
-                                this.console.log(_move);
+                                //this.console.log(_move);
                                 const __mv = _ngame.move(_move);
                                 if(__mv.from === ResponseMoves[index].move.from){
                                     const infoPos = getInfo(_ngame.fen(), [__mv.to])[__mv.to];
@@ -857,7 +863,7 @@ module.exports = class Game extends EventEmitter {
                                             if(e.type == "n") e.points = 3;
                                             if(e.type == "r") e.points = 5;
                                             if(e.type == "q") e.points = 9;
-                                            if(e.type == "k") e.points = Infinity;
+                                            if(e.type == "k") e.points = 0;
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
                                         for(const position of (infoPos.defenses || [])){
@@ -869,14 +875,28 @@ module.exports = class Game extends EventEmitter {
                                             if(e.type == "n") e.points = 3;
                                             if(e.type == "r") e.points = 5;
                                             if(e.type == "q") e.points = 9;
-                                            if(e.type == "k") e.points = Infinity;
+                                            if(e.type == "k") e.points = 0;
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
 
-                                        if(!compare(_piecePointsAttacking, [getPiecePoints(__mv.piece), ..._piecePointsDeffeding], getPiecePoints(__mv.captured)?.points || -1)){
+                                        const r = compare(_piecePointsAttacking, [getPiecePoints(__mv.piece), ..._piecePointsDeffeding], getPiecePoints(__mv.captured)?.points || -1);
+
+                                        if(!r){
+                                            
                                             outerMoves = true;
                                             break
                                         }
+
+                                        // this.console.log([
+                                        //     "BF",
+                                        //     r,
+                                        //     _piecePointsAttacking,
+                                        //     [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], 
+                                        //     getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
+                                        // ])
+                                    }else{
+                                        outerMoves = true;
+                                        break;
                                     }
                                 }else{
                                     const infoPos = getInfo(_ngame.fen(), [ResponseMoves[index].move.from])[ResponseMoves[index].move.from];
@@ -892,7 +912,7 @@ module.exports = class Game extends EventEmitter {
                                             if(e.type == "n") e.points = 3;
                                             if(e.type == "r") e.points = 5;
                                             if(e.type == "q") e.points = 9;
-                                            if(e.type == "k") e.points = Infinity;
+                                            if(e.type == "k") e.points = 0;
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
                                         for(const position of (infoPos.defenses || [])){
@@ -904,19 +924,31 @@ module.exports = class Game extends EventEmitter {
                                             if(e.type == "n") e.points = 3;
                                             if(e.type == "r") e.points = 5;
                                             if(e.type == "q") e.points = 9;
-                                            if(e.type == "k") e.points = Infinity;
+                                            if(e.type == "k") e.points = 0;
                                             return e;
                                         }).sort((a, b) => a.points - b.points);
 
-                                        if(!compare(_piecePointsAttacking, [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], getPiecePoints(ResponseMoves[index].move.captured)?.points || -1)){
+                                        const r = compare(_piecePointsAttacking, [getPiecePoints(__mv.piece), ..._piecePointsDeffeding], getPiecePoints(__mv.captured)?.points || -1);
+
+                                        if(!r){
                                             outerMoves = true;
                                             break
                                         }
+                                        // this.console.log([
+                                        //     "BF",
+                                        //     r,
+                                        //     _piecePointsAttacking,
+                                        //     [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], 
+                                        //     getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
+                                        // ])
+                                    }else{
+                                        outerMoves = true;
+                                        break;
                                     }
                                 }
                                 _ngame.undo();
                             }
-                            this.console.log(["ANALYSIS", outerMoves])
+                            //this.console.log(["ANALYSIS", outerMoves])
                             if(outerMoves){
                                 ResponseMoves[index].setType("BRILHANTE")
                                     .setDescription("Esse lance sacrifica a sua peça, é uma jogada dificil de ser vista")
@@ -1060,8 +1092,6 @@ module.exports = class Game extends EventEmitter {
             }
         }
 
-        require("fs").writeFileSync("_move.json", JSON.stringify(_MoveResult, null, 4));
-
         for(const result of ResponseMoves){
             if(result.move.color == "w"){
                 if(result.type != "BOOK"){
@@ -1118,17 +1148,10 @@ module.exports = class Game extends EventEmitter {
                 precision: Number((Precissions.Black[key].sum/Precissions.Black[key].total).toFixed(1)),
             }
         }
-
-        require("fs").writeFileSync("_total.json", JSON.stringify({
-            precisionPerPiece: pShow,
-            precision: Precision,
-            moves: ResponseMoves
-        }, null, 4));
         
 
         return {
             ramUsage: ramUsage-ramUsage2,
-            d: [ramUsage, ramUsage2],
             precisionPerPiece: Precissions,
             precision: Precision,
             moves: ResponseMoves
