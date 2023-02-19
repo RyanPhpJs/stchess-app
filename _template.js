@@ -18,7 +18,7 @@ game.go().then((result) => {
         console.log(`${move.move.san} (${move.type}) - ${move.description}`);
     }
     console.log(`Operation consumed ${Date.now() - InitedDate}ms`);
-    console.log(`RAM Usage: ${(result.ramUsage/1024/1024).toFixed(1)}MB - `, result.d);
+    console.log(`RAM Usage: ${(result.ramUsage/1024/1024).toFixed(1)}MB`);
 
     let text = `[White_Precision ${result.precision.White}%]\n[Black_Precision ${result.precision.Black}]\n\n`;
     let i = 0;
