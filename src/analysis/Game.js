@@ -4,9 +4,60 @@ const Move = require("./Move");
 const { Engine } = require("node-uci");
 const MoveAnalysis = require("./MoveAnalysis");
 const Piece = require("./Piece");
-const { getInfo } = require("chessy");
+const { getInfo: getInfoChessy } = require("chessy");
 const TaticalTheme = require("../tatical/TaticalTheme");
 const Position = require("../tatical/Position");
+
+
+/**
+ * 
+ * @param {string} fen 
+ * @param {string[]} locals 
+ */
+function getInfo(fen, locals){
+
+    let response = {}
+
+    const info = getInfoChessy(fen, locals);
+
+    for(const loc of locals){
+
+        if(info[loc].threats){
+
+            let threats = [];
+
+            for(const piece of info[loc].threats){
+
+                try {
+
+                    const chess = new Chess(fen);
+                    chess.move({ from: piece, to: loc, promotion: "q" });
+                    threats.push(piece);
+
+                } catch (err) {
+                    //
+                }
+
+            }
+
+            response[loc] = info[loc];
+            if(threats.length > 0){
+                response[loc].threats = threats;
+            }else{
+                response[loc].threats = null;
+            }
+
+        }else{
+
+            response[loc] = info[loc];
+
+        }
+
+    }
+
+    return response;
+
+}
 
 /**
  * 
@@ -886,14 +937,6 @@ module.exports = class Game extends EventEmitter {
                                             outerMoves = true;
                                             break
                                         }
-
-                                        // this.console.log([
-                                        //     "BF",
-                                        //     r,
-                                        //     _piecePointsAttacking,
-                                        //     [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], 
-                                        //     getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
-                                        // ])
                                     }else{
                                         outerMoves = true;
                                         break;
@@ -934,13 +977,6 @@ module.exports = class Game extends EventEmitter {
                                             outerMoves = true;
                                             break
                                         }
-                                        // this.console.log([
-                                        //     "BF",
-                                        //     r,
-                                        //     _piecePointsAttacking,
-                                        //     [getPiecePoints(ResponseMoves[index].move.piece), ..._piecePointsDeffeding], 
-                                        //     getPiecePoints(ResponseMoves[index].move.captured)?.points || -1
-                                        // ])
                                     }else{
                                         outerMoves = true;
                                         break;
